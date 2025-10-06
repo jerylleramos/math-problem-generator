@@ -21,12 +21,13 @@ Student's Answer: {user_answer}
 Is Correct: {is_correct}
 
 Requirements:
-1. Keep feedback concise (1-2 sentences)
+1. Keep feedback concise but insightful.
 2. Be encouraging and positive
 3. If incorrect, briefly mention why without giving away the answer
 4. Use age-appropriate language
 5. Focus on learning and growth
 
+Limit your response to a maximum of 2048 tokens.
 Return only the feedback text with no additional formatting or quotes.`;
 
 export async function POST(request: Request) {
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        maxOutputTokens: 1024,
+        maxOutputTokens: 2048,
         temperature: modelConfig.temperature,
         topK: modelConfig.topK,
         topP: modelConfig.topP,

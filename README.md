@@ -140,9 +140,31 @@ When submitting your assessment, provide:
 
 ### My Implementation:
 
-- 
-- 
-- 
+- **Database Controller Pattern**  
+  I created `mathProblemController.ts` to handle all database operations. It has clean methods for `createSession`, `getSessionById`, and `createSubmission`. This makes the code easier to maintain and avoids repeating code.  
+
+- **Smart Answer Validation**  
+  I added a numerical comparison with tolerance using  
+  `Math.abs(Number(user_answer) - Number(session.correct_answer)) < 0.0001`.  
+  This makes sure floating-point answers are checked more accurately.  
+
+- **Tailwind Setup Issues**  
+  At first, I had problems with PostCSS and Tailwind setup. I fixed it by properly configuring `postcss.config.js` with the right plugins and making sure `globals.css` has the correct order of `@tailwind` directives instead of using `@import`.  
+
+- **Clean UI Layout**  
+  I arranged the UI with a clear structure. There’s a main card for generating problems, then the problem display, and finally the form for submission. Everything is centered and spaced well using Tailwind’s container and flex utilities.  
+
+- **Gradient Button Design**  
+  I styled the buttons with gradient backgrounds and added hover and disabled states using Tailwind classes like `bg-gradient-to-r from-sky-500 to-blue-500`.  
+
+- **Error Handling Flow**  
+  I improved error handling in the controller by returning specific messages and proper HTTP status codes. This way, the frontend gets clear feedback when something goes wrong.  
+
+- **Form Validation**  
+  I also added form validation for number inputs. It checks the type and range before submission so invalid answers won’t be sent.
+
+SUPABASE URL => https://hvltewqgjqfeznysupkr.supabase.co
+SUPABASE KEY => eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh2bHRld3FnanFmZXpueXN1cGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NzE5NTMsImV4cCI6MjA3NTI0Nzk1M30.ZaYQHTNF24WCWOy8OC_1aYsbYbZfUYL6HefBTYOHlIo
 
 ## Additional Features (Optional)
 

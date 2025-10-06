@@ -13,6 +13,7 @@ interface SubmissionResponse {
 
 export function useMathProblem() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentProblem, setCurrentProblem] = useState<MathProblem | null>(null);
   const [submission, setSubmission] = useState<SubmissionResponse | null>(null);
@@ -45,7 +46,7 @@ export function useMathProblem() {
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     setError(null);
     try {
       const response = await fetch('/api/math-problem/submit', {
@@ -68,7 +69,7 @@ export function useMathProblem() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -76,6 +77,7 @@ export function useMathProblem() {
     currentProblem,
     submission,
     isLoading,
+    isSubmitting,
     error,
     generateProblem,
     submitAnswer,
