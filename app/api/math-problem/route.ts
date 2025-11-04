@@ -13,33 +13,71 @@ const modelConfig = {
   topP: 0.8,
 };
 
-const PROMPT_TEMPLATE = `Generate a Primary 5 level math word problem based on one of these topics:
-- Whole Numbers (up to 10 million, four operations, order of operations, brackets)
-- Fractions (division, fraction-decimal conversion, four operations with fractions and mixed numbers)
-- Decimals (operations, unit conversions)
-- Percentage (expressing part of whole, discounts, GST, interest)
-- Rate (rate calculations)
-- Area & Volume (area of triangles, composite figures, volume of cube/cuboid, liquid volume)
-- Geometry (angles, triangle properties, parallelogram/rhombus/trapezium properties)
+const PROMPT_TEMPLATE = `Generate a Primary 5 level math word problem with the following specifications:
 
-The problem should:
-1. Be appropriate for Primary 5 students (11-12 years old)
+Difficulty: {difficulty}
+Operation Type: {operation_type}
+
+Guidelines for {difficulty} difficulty:
+{difficulty_guidelines}
+
+The problem should focus on {operation_type} and be structured as follows:
+{operation_guidelines}
+
+Additional requirements:
+1. Be engaging and related to real-world situations
 2. Have a clear numerical answer
-3. Be engaging and related to real-world situations
-4. Include all necessary information to solve the problem
+3. Include all necessary information to solve the problem
+4. Be appropriate for Primary 5 students (11-12 years old)
 
 Return the response in this JSON format only, no need to add any markdown characters:
 {
   "problem_text": "The complete word problem text",
-  "correct_answer": number
+  "correct_answer": number,
+  "suggested_hints": ["hint1", "hint2", "hint3"]  // Progressive hints from basic to detailed
 }`;
 
-export async function POST() {
+const DIFFICULTY_GUIDELINES = {
+  easy: "Use single-step problems with straightforward calculations. Focus on basic concepts. Numbers should be friendly and manageable.",
+  medium: "Use two-step problems that require some planning. Include mixed operations or unit conversions. Numbers can be more challenging.",
+  hard: "Use multi-step problems that require strategic thinking. Combine multiple concepts. Include more complex numbers and relationships."
+};
+
+const OPERATION_GUIDELINES = {
+  addition: "Focus on combining quantities, totals, or increments. Include scenarios like shopping, collecting, or growing quantities.",
+  subtraction: "Focus on finding differences, reductions, or remaining amounts. Include scenarios like spending, decreasing quantities, or comparing amounts.",
+  multiplication: "Focus on repeated addition, scaling, or area calculations. Include scenarios like bulk purchases, conversions, or geometric calculations.",
+  division: "Focus on sharing, grouping, or rate calculations. Include scenarios like distribution, finding unit rates, or portioning."
+};
+
+export async function POST(request: Request) {
   try {
+    // Parse request body for difficulty and problem type
+    const body = await request.json();
+    const { 
+      difficulty = 'medium',  // Default to medium if not specified
+      problem_type = 'addition'  // Default to addition if not specified
+    } = body;
+
+    // Validate parameters
+    if (!['easy', 'medium', 'hard'].includes(difficulty)) {
+      throw new Error('Invalid difficulty level');
+    }
+    if (!['addition', 'subtraction', 'multiplication', 'division'].includes(problem_type)) {
+      throw new Error('Invalid problem type');
+    }
+
+    // Generate personalized prompt
+    const prompt = PROMPT_TEMPLATE
+      .replace('{difficulty}', difficulty)
+      .replace('{operation_type}', problem_type)
+      .replace('{difficulty_guidelines}', DIFFICULTY_GUIDELINES[difficulty as keyof typeof DIFFICULTY_GUIDELINES])
+      .replace('{operation_guidelines}', OPERATION_GUIDELINES[problem_type as keyof typeof OPERATION_GUIDELINES]);
+
     // Generate problem using Gemini
     const model = genAI.getGenerativeModel(modelConfig);
     const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: PROMPT_TEMPLATE }] }],
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         maxOutputTokens: 2048,
         temperature: modelConfig.temperature,
@@ -64,13 +102,31 @@ export async function POST() {
     const savedProblem = await mathProblemController.createSession({
       problem_text: generatedProblem.problem_text,
       correct_answer: generatedProblem.correct_answer,
+      difficulty: difficulty as 'easy' | 'medium' | 'hard',
+      problem_type: problem_type as 'addition' | 'subtraction' | 'multiplication' | 'division',
     });
+
+    // Save initial hints
+    const hints = generatedProblem.suggested_hints || [];
+    if (hints.length > 0) {
+      await Promise.all(hints.map((hint: string, index: number) => 
+        mathProblemController.createHint({
+          session_id: savedProblem.id,
+          hint_text: hint,
+          hint_order: index + 1,
+        })
+      ));
+    }
 
     // Return the problem with session ID
     return NextResponse.json({
       problem_text: savedProblem.problem_text,
       correct_answer: savedProblem.correct_answer,
       session_id: savedProblem.id,
+      difficulty: savedProblem.difficulty,
+      problem_type: savedProblem.problem_type,
+      hints_available: savedProblem.hints_available,
+      score_value: savedProblem.score,
     });
   } catch (error) {
     console.error('Error generating math problem:', error);
