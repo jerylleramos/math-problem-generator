@@ -82,8 +82,9 @@ export async function POST(request: Request) {
     const feedback = result.response.text();
 
     // Save submission to database
+    let submission;
     try {
-      await mathProblemController.createSubmission({
+      submission = await mathProblemController.createSubmission({
         session_id,
         user_answer,
         is_correct: isCorrect,
@@ -101,6 +102,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       is_correct: isCorrect,
       feedback,
+      points_earned: submission.points_earned || 0,
     });
   } catch (error) {
     console.error('Error processing submission:', error);

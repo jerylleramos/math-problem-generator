@@ -71,11 +71,12 @@ export function useMathProblem() {
         body: JSON.stringify({ difficulty, problem_type }),
       });
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        throw new Error('Failed to generate problem');
+        throw new Error(data.error || 'Failed to generate problem');
       }
       
-      const data = await response.json();
       setCurrentProblem(data);
       setSubmission(null);
       setHints([]);
@@ -107,11 +108,12 @@ export function useMathProblem() {
         }),
       });
 
+      const data = await response.json();
+      
       if (!response.ok) {
-        throw new Error('Failed to submit answer');
+        throw new Error(data.error || 'Failed to submit answer');
       }
 
-      const data = await response.json();
       setSubmission(data);
       
       // Refresh user history after submission

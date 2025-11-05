@@ -81,3 +81,35 @@ SELECT
     COUNT(CASE WHEN is_correct THEN 1 END) as problems_solved
 FROM math_problem_submissions
 WHERE points_earned IS NOT NULL;
+
+-- Drop existing functions and triggers first
+DROP FUNCTION IF EXISTS refresh_user_scores() CASCADE;
+DROP FUNCTION IF EXISTS refresh_user_scores_trigger_fn() CASCADE;
+DROP TRIGGER IF EXISTS refresh_user_scores_trigger ON math_problem_submissions;
+
+-- Create a function to refresh the user_scores materialized view (for trigger)
+CREATE OR REPLACE FUNCTION refresh_user_scores_trigger_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+  REFRESH MATERIALIZED VIEW user_scores;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create a separate function that can be called via RPC
+CREATE OR REPLACE FUNCTION refresh_user_scores()
+RETURNS void AS $$
+BEGIN
+  REFRESH MATERIALIZED VIEW user_scores;
+END;
+$$ LANGUAGE plpgsql
+SECURITY DEFINER; -- Allow this function to be called by any authenticated user
+
+-- Grant execute permission to public (needed for Supabase RPC)
+GRANT EXECUTE ON FUNCTION refresh_user_scores() TO PUBLIC;
+
+-- Create a trigger to refresh the materialized view after each submission
+CREATE TRIGGER refresh_user_scores_trigger
+AFTER INSERT OR UPDATE ON math_problem_submissions
+FOR EACH STATEMENT
+EXECUTE FUNCTION refresh_user_scores_trigger_fn();

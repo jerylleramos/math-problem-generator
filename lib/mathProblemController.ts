@@ -184,7 +184,20 @@ class MathProblemController {
     }));
   }
 
+  async refreshUserScores(): Promise<void> {
+    const { error } = await supabase
+      .rpc('refresh_user_scores');
+
+    if (error) {
+      console.error('Error refreshing user scores:', error);
+      throw new Error('Failed to refresh user scores');
+    }
+  }
+
   async getUserScore(): Promise<UserScore> {
+    // Ensure the view is refreshed before fetching scores
+    await this.refreshUserScores();
+    
     const { data: score, error } = await supabase
       .from('user_scores')
       .select('*')
@@ -195,7 +208,7 @@ class MathProblemController {
       throw new Error('Failed to fetch user score');
     }
 
-    return score;
+    return score || { total_score: 0, problems_attempted: 0, problems_solved: 0 };
   }
 }
 

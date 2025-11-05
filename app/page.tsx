@@ -8,11 +8,14 @@ interface MathProblem {
   final_answer: number;
 }
 
+import { Toast } from './components/Toast';
+
 export default function Home() {
   const [userAnswer, setUserAnswer] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>("medium");
   const [selectedType, setSelectedType] = useState<ProblemType>("addition");
   const [showHistory, setShowHistory] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
 
   const {
     currentProblem: problem,
@@ -48,8 +51,58 @@ export default function Home() {
     setUserAnswer(""); // Reset input after submission
   };
 
+  // Watch for error changes and show toast
+  useEffect(() => {
+    if (error) {
+      setToast({ message: error, type: 'error' });
+    }
+  }, [error]);
+
+  // Error handler function
+  const handleError = (message: string) => {
+    setToast({ message, type: 'error' });
+  };
+
+  // Success handler function
+  const handleSuccess = (message: string) => {
+    setToast({ message, type: 'success' });
+  };
+
+  // Handle generate problem with error feedback
+  const handleGenerateProblem = async () => {
+    try {
+      await generateProblem(selectedDifficulty, selectedType);
+      setShowHistory(false);
+    } catch (err) {
+      // Error is already set in the hook and will trigger toast via useEffect
+    }
+  };
+
+  // Handle submit with error feedback
+  const handleSubmitWithFeedback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const numericAnswer = parseFloat(userAnswer);
+    if (isNaN(numericAnswer)) {
+      handleError('Please enter a valid number');
+      return;
+    }
+    try {
+      await submitAnswer(numericAnswer);
+      setUserAnswer("");
+    } catch (err) {
+      // Error is already set in the hook and will trigger toast via useEffect
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-100 to-white p-4">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
       <main className="container mx-auto px-4 py-10 max-w-6xl w-full">
         {/* Header with Score */}
         <div className="flex flex-col items-center mb-10">
@@ -118,10 +171,7 @@ export default function Home() {
 
             {/* Generate Button */}
             <button
-              onClick={() => {
-                generateProblem(selectedDifficulty, selectedType);
-                setShowHistory(false);
-              }}
+              onClick={handleGenerateProblem}
               disabled={isLoading || isSubmitting}
               className="w-full bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 disabled:from-gray-400 disabled:to-gray-400 text-white text-xl font-bold py-5 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl"
             >
@@ -263,7 +313,7 @@ export default function Home() {
                       </p>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmitWithFeedback} className="space-y-6">
                       <div>
                         <label
                           htmlFor="answer"

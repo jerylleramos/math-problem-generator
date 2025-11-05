@@ -1,3 +1,4 @@
+import { parseGeminiJson } from '@/lib/helpers';
 import { mathProblemController } from '@/lib/mathProblemController';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
@@ -5,49 +6,45 @@ import { NextResponse } from 'next/server';
 // Initialize Google Generative AI with API key
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
 
-// Configuration for the Gemini model
+// Configuration for the Gemini model - optimized for faster responses
 const modelConfig = {
   model: "gemini-2.5-flash",
-  temperature: 0.7,
+  temperature: 0.3, // Lower temperature for more focused outputs
   topK: 1,
-  topP: 0.8,
+  topP: 0.1, // Lower topP for more deterministic responses
+  maxOutputTokens: 500, // Limit token usage
 };
 
-const PROMPT_TEMPLATE = `Generate a Primary 5 level math word problem with the following specifications:
+const PROMPT_TEMPLATE = `Create a concise Primary 5 math problem:
+- Difficulty: {difficulty}
+- Operation: {operation_type}
+- Context: {difficulty_guidelines}
+- Focus: {operation_guidelines}
 
-Difficulty: {difficulty}
-Operation Type: {operation_type}
+Requirements:
+1. Real-world scenario
+2. Clear numerical answer
+3. Age-appropriate (11-12 years)
+4. All needed info included
 
-Guidelines for {difficulty} difficulty:
-{difficulty_guidelines}
-
-The problem should focus on {operation_type} and be structured as follows:
-{operation_guidelines}
-
-Additional requirements:
-1. Be engaging and related to real-world situations
-2. Have a clear numerical answer
-3. Include all necessary information to solve the problem
-4. Be appropriate for Primary 5 students (11-12 years old)
-
-Return the response in this JSON format only, no need to add any markdown characters:
+Format (JSON only), no markdown characters or extra text:
 {
-  "problem_text": "The complete word problem text",
+  "problem_text": "word problem here",
   "correct_answer": number,
-  "suggested_hints": ["hint1", "hint2", "hint3"]  // Progressive hints from basic to detailed
+  "suggested_hints": ["basic hint", "detailed hint"]
 }`;
 
 const DIFFICULTY_GUIDELINES = {
-  easy: "Use single-step problems with straightforward calculations. Focus on basic concepts. Numbers should be friendly and manageable.",
-  medium: "Use two-step problems that require some planning. Include mixed operations or unit conversions. Numbers can be more challenging.",
-  hard: "Use multi-step problems that require strategic thinking. Combine multiple concepts. Include more complex numbers and relationships."
+  easy: "Single-step, basic numbers, straightforward calculation",
+  medium: "Two-step problem, mixed operations or conversions",
+  hard: "Multi-step problem, strategic thinking required"
 };
 
 const OPERATION_GUIDELINES = {
-  addition: "Focus on combining quantities, totals, or increments. Include scenarios like shopping, collecting, or growing quantities.",
-  subtraction: "Focus on finding differences, reductions, or remaining amounts. Include scenarios like spending, decreasing quantities, or comparing amounts.",
-  multiplication: "Focus on repeated addition, scaling, or area calculations. Include scenarios like bulk purchases, conversions, or geometric calculations.",
-  division: "Focus on sharing, grouping, or rate calculations. Include scenarios like distribution, finding unit rates, or portioning."
+  addition: "Combining quantities (shopping/collecting)",
+  subtraction: "Finding differences/remaining amounts",
+  multiplication: "Repeated addition/scaling scenarios",
+  division: "Sharing/rate calculations"
 };
 
 export async function POST(request: Request) {
@@ -96,8 +93,12 @@ export async function POST(request: Request) {
     console.log('Generated text:', text);
     
     // Parse the JSON response
-    const generatedProblem = JSON.parse(text);
-    
+    const generatedProblem = parseGeminiJson(text);
+
+    if (!generatedProblem) {
+      throw new Error('Failed to parse generated problem');
+    }
+
     // Save to Supabase and get session ID
     const savedProblem = await mathProblemController.createSession({
       problem_text: generatedProblem.problem_text,
